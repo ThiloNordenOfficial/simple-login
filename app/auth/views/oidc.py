@@ -100,13 +100,7 @@ def oidc_callback():
     email = sanitize_email(email)
     user = User.get_by(email=email)
 
-    if not user and config.DISABLE_REGISTRATION:
-        flash(
-            "Sorry you cannot sign up via the OIDC provider. Please sign-up first with your email.",
-            "error",
-        )
-        return redirect(url_for("auth.register"))
-    elif not user:
+    if not user:
         user = create_user(email, oidc_user_data)
 
     if not SocialAuth.get_by(user_id=user.id, social="oidc"):
