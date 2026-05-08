@@ -889,19 +889,7 @@ class User(Base, ModelMixin, UserMixin, PasswordOracle):
         return True
 
     def is_premium(self, include_partner_subscription: bool = True) -> bool:
-        """
-        user is premium if they:
-        - have a lifetime deal or
-        - in trial period or
-        - active subscription
-        """
-        if self.lifetime_or_active_subscription(include_partner_subscription):
-            return True
-
-        if self.trial_end and arrow.now() < self.trial_end:
-            return True
-
-        return False
+        return True
 
     @property
     def upgrade_channel(self) -> str:
