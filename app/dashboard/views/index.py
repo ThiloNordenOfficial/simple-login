@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import arrow
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
@@ -240,6 +241,7 @@ def index():
         filter=alias_filter,
         stats=stats,
         csrf_form=csrf_form,
+        today=arrow.now().format("YYYY-MM-DD"),
     )
 
 

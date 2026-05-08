@@ -485,6 +485,77 @@
           <span class="custom-switch-indicator"></span>
         </label>
       </div>
+      <!-- Expiry date -->
+      <div class="small-text mt-2"
+           data-toogle="tooltip"
+           title="Automatically disable or delete this alias on a chosen date">
+        Expire this alias
+        <i class="fe fe-help-circle"></i>
+      </div>
+      <div>
+        <label class="custom-switch cursor pl-0">
+          <input type="checkbox"
+                 class="expiry-toggle custom-switch-input"
+                 id="expiry-toggle-{{ alias.id }}"
+                 data-alias="{{ alias.id }}"
+                 data-alias-email="{{ alias.email }}"
+                 onchange="handleExpiryToggle({{ alias.id }})"
+                 {{ "checked" if alias.expiry_date else "" }}>
+          <span class="custom-switch-indicator"></span>
+        </label>
+      </div>
+      <div id="expiry-options-{{ alias.id }}"
+           class="pl-3 mt-1"
+           style="border-left: 3px solid #adb5bd{% if not alias.expiry_date %}; display:none{% endif %}">
+        <div class="d-flex flex-wrap align-items-end mt-2" style="gap: 12px">
+          <div>
+            <div class="small-text mb-1"
+                 data-toogle="tooltip"
+                 title="The alias will expire on this date">
+              Expiry date
+              <i class="fe fe-help-circle"></i>
+            </div>
+            <input type="date"
+                   id="expiry-date-{{ alias.id }}"
+                   class="form-control"
+                   value="{{ alias.expiry_date.strftime('%Y-%m-%d') if alias.expiry_date else '' }}"
+                   min="{{ today }}"
+                   onchange="handleExpiryDateChange({{ alias.id }}, '{{ alias.email }}')">
+          </div>
+          <div>
+            <div class="small-text mb-1"
+                 data-toogle="tooltip"
+                 title="What happens when the alias expires">
+              Action
+              <i class="fe fe-help-circle"></i>
+            </div>
+            <select id="expiry-action-{{ alias.id }}"
+                    class="form-control"
+                    onchange="handleExpiryChange({{ alias.id }}, '{{ alias.email }}')">
+              <option value="0" {{ "selected" if alias.expiry_action is none or alias.expiry_action.value == 0 else "" }}>Disable</option>
+              <option value="1" {{ "selected" if alias.expiry_action and alias.expiry_action.value == 1 else "" }}>Move to trash</option>
+            </select>
+          </div>
+          <div>
+            <div class="small-text mb-1"
+                 data-toogle="tooltip"
+                 title="Send me an email when this alias expires">
+              Notify me
+              <i class="fe fe-help-circle"></i>
+            </div>
+            <label class="custom-switch cursor pl-0">
+              <input type="checkbox"
+                     class="expiry-notify custom-switch-input"
+                     id="expiry-notify-{{ alias.id }}"
+                     data-alias="{{ alias.id }}"
+                     data-alias-email="{{ alias.email }}"
+                     {{ "checked" if alias.expiry_notify_user else "" }}>
+              <span class="custom-switch-indicator"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- END Expiry date -->
       <div>
         <div class="btn-group float-right" role="group" aria-label="Basic example">
           <a href="{{ url_for('dashboard.alias_transfer_send_route', alias_id=alias.id) }}"
@@ -534,7 +605,7 @@
 {% endif %}
 {% endblock %}
 {% block script %}
-  <script src="/static/js/index.js?v=0"></script>
+  <script src="/static/js/index.js?v=2"></script>
   <script>
       {% if show_intro %}
           // only show intro when screen is big enough to show "developer" tab

@@ -1,5 +1,6 @@
 from typing import Optional
 
+import arrow
 from deprecated import deprecated
 from flask import g
 from flask import jsonify
@@ -31,7 +32,7 @@ from app.errors import (
 )
 from app.extensions import limiter
 from app.log import LOG
-from app.models import Alias, Contact, Mailbox, AliasDeleteReason
+from app.models import Alias, AliasExpiryAction, Contact, Mailbox, AliasDeleteReason
 
 
 @deprecated
@@ -337,6 +338,28 @@ def update_alias(alias_id):
     if "pinned" in data:
         alias.pinned = data.get("pinned")
         changed_fields.append("pinned")
+        changed = True
+
+    if "expiry_date" in data:
+        raw = data.get("expiry_date")
+        try:
+            alias.expiry_date = arrow.get(raw) if raw else None
+        except Exception:
+            return jsonify(error="Invalid expiry_date format"), 400
+        changed_fields.append("expiry_date")
+        changed = True
+
+    if "expiry_action" in data:
+        try:
+            alias.expiry_action = AliasExpiryAction(int(data["expiry_action"]))
+        except (ValueError, KeyError):
+            return jsonify(error="Invalid expiry_action value"), 400
+        changed_fields.append("expiry_action")
+        changed = True
+
+    if "expiry_notify_user" in data:
+        alias.expiry_notify_user = bool(data.get("expiry_notify_user"))
+        changed_fields.append("expiry_notify_user")
         changed = True
 
     if changed:

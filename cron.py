@@ -12,7 +12,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy.sql import Insert, text
 
 from app import s3, config
-from app.alias_utils import nb_email_log_for_mailbox
+from app.alias_utils import nb_email_log_for_mailbox, change_alias_status, change_alias_expiry
 from app.api.views.apple import verify_receipt
 from app.db import Session
 from app.email_utils import (
@@ -30,6 +30,8 @@ from app.models import (
     Subscription,
     User,
     Alias,
+    AliasDeleteReason,
+    AliasExpiryAction,
     EmailLog,
     CustomDomain,
     Client,
@@ -1250,6 +1252,49 @@ def clear_oauth_token_pending_to_be_deleted():
     cleanup_expired_oauth_tokens(oldest_valid)
 
 
+def process_expired_aliases():
+    now = arrow.utcnow()
+    expired = (
+        Session.query(Alias)
+        .filter(
+            Alias.expiry_date.isnot(None),
+            Alias.expiry_date <= now,
+            Alias.delete_on.is_(None),
+            Alias.enabled == True,  # noqa: E712
+        )
+        .all()
+    )
+    for alias in expired:
+        LOG.i(f"Processing expired alias {alias}")
+        expiry_action_label = (
+            "moved to trash"
+            if alias.expiry_action == AliasExpiryAction.DeleteToTrash
+            else "disabled"
+        )
+        if alias.expiry_notify_user:
+            send_email(
+                alias.user.email,
+                f"Your alias {alias.email} has expired",
+                render(
+                    "transactional/alias-expired.txt",
+                    alias=alias,
+                    action=expiry_action_label,
+                ),
+                render(
+                    "transactional/alias-expired.html",
+                    alias=alias,
+                    action=expiry_action_label,
+                ),
+            )
+        if alias.expiry_action == AliasExpiryAction.DeleteToTrash:
+            alias.delete_on = arrow.utcnow()
+            alias.delete_reason = AliasDeleteReason.ManualAction
+        else:
+            change_alias_status(alias, enabled=False)
+        alias.expiry_date = None
+        Session.commit()
+
+
 if __name__ == "__main__":
     LOG.d("Start running cronjob")
     parser = argparse.ArgumentParser()
@@ -1319,3 +1364,6 @@ if __name__ == "__main__":
         elif args.job == "clear_expired_oauth_token":
             LOG.d("Clearing oauth_token entries pending to be deleted")
             clear_oauth_token_pending_to_be_deleted()
+        elif args.job == "process_expired_aliases":
+            LOG.d("Processing expired aliases")
+            process_expired_aliases()

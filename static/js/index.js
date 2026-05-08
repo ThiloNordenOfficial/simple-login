@@ -203,6 +203,77 @@ function handleDisplayNameBlur(aliasId) {
   document.getElementById(`display-name-focus-message-${aliasId}`).classList.add('d-none');
 }
 
+async function handleExpiryToggle(aliasId) {
+  const enabled = document.getElementById(`expiry-toggle-${aliasId}`).checked;
+  document.getElementById(`expiry-options-${aliasId}`).style.display = enabled ? "block" : "none";
+
+  if (!enabled) {
+    try {
+      await fetch(`/api/aliases/${aliasId}`, {
+        method: "PUT",
+        headers: getHeaders(),
+        body: JSON.stringify({ expiry_date: null }),
+      });
+      document.getElementById(`expiry-date-${aliasId}`).value = "";
+    } catch (e) {
+      toastr.error("Sorry for the inconvenience! Could you refresh the page & retry please?", "Unknown Error");
+    }
+  }
+}
+
+$(".expiry-notify").change(async function () {
+  const aliasId = $(this).data("alias");
+  const aliasEmail = $(this).data("alias-email");
+  await handleExpiryChange(aliasId, aliasEmail);
+});
+
+async function handleExpiryDateChange(aliasId, aliasEmail) {
+  const dateVal = document.getElementById(`expiry-date-${aliasId}`).value;
+
+  try {
+    const res = await fetch(`/api/aliases/${aliasId}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify({ expiry_date: dateVal || null }),
+    });
+
+    if (res.ok) {
+      toastr.success(`Expiry date saved for ${aliasEmail}`);
+    } else {
+      toastr.error("Sorry for the inconvenience! Could you refresh the page & retry please?", "Unknown Error");
+    }
+  } catch (e) {
+    toastr.error("Sorry for the inconvenience! Could you refresh the page & retry please?", "Unknown Error");
+  }
+}
+
+
+async function handleExpiryChange(aliasId, aliasEmail) {
+  const dateVal = document.getElementById(`expiry-date-${aliasId}`).value;
+  const action = parseInt(document.getElementById(`expiry-action-${aliasId}`).value);
+  const notify = document.getElementById(`expiry-notify-${aliasId}`).checked;
+
+  try {
+    const res = await fetch(`/api/aliases/${aliasId}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        expiry_date: dateVal || null,
+        expiry_action: action,
+        expiry_notify_user: notify,
+      }),
+    });
+
+    if (res.ok) {
+      toastr.success(`Expiry settings saved for ${aliasEmail}`);
+    } else {
+      toastr.error("Sorry for the inconvenience! Could you refresh the page & retry please?", "Unknown Error");
+    }
+  } catch (e) {
+    toastr.error("Sorry for the inconvenience! Could you refresh the page & retry please?", "Unknown Error");
+  }
+}
+
 new Vue({
   el: '#filter-app',
   delimiters: ["[[", "]]"], // necessary to avoid conflict with jinja

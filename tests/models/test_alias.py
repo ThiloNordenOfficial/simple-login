@@ -1,9 +1,7 @@
-import pytest
-
 from app.db import Session
 from app.errors import AliasDomainForbidden
 from app.models import Alias, Mailbox, AliasMailbox, User, CustomDomain
-from tests.utils import create_new_user, random_domain, random_email
+from tests.utils import create_new_user, random_email
 
 
 def test_duplicated_mailbox_is_returned_only_once():
@@ -86,3 +84,32 @@ def test_alias_create_cannot_use_another_users_custom_domain():
         flush=True,
     )
     assert user_1_alias.custom_domain_id == user_1_custom_domain.id
+
+
+def test_alias_expiry_fields_default_to_none(flask_client):
+    user = create_new_user()
+    alias = Alias.create_new_random(user)
+    Session.flush()
+    assert alias.expiry_date is None
+    assert not alias.expiry_notify_user
+
+
+def test_alias_expiry_fields_persist(flask_client):
+    user = create_new_user()
+    alias = Alias.create_new_random(user)
+    alias.expiry_date = arrow.now().shift(days=7)
+    alias.expiry_action = AliasExpiryAction.Disable
+    alias.expiry_notify_user = True
+    Session.flush()
+    assert alias.expiry_date is not None
+    assert alias.expiry_action == AliasExpiryAction.Disable
+    assert alias.expiry_notify_user is True
+
+
+def test_alias_expiry_action_delete_to_trash(flask_client):
+    user = create_new_user()
+    alias = Alias.create_new_random(user)
+    alias.expiry_date = arrow.now().shift(days=1)
+    alias.expiry_action = AliasExpiryAction.DeleteToTrash
+    Session.flush()
+    assert alias.expiry_action == AliasExpiryAction.DeleteToTrash

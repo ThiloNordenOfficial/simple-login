@@ -291,6 +291,11 @@ class UserAliasDeleteAction(EnumE):
     DeleteImmediately = 1
 
 
+class AliasExpiryAction(EnumE):
+    Disable = 0
+    DeleteToTrash = 1
+
+
 class JobPriority(EnumE):
     Low = 1
     Default = 50
@@ -1702,6 +1707,17 @@ class Alias(Base, ModelMixin):
         nullable=True,
     )
 
+    expiry_date = sa.Column(ArrowType, default=None, server_default=None, nullable=True)
+    expiry_action = sa.Column(
+        IntEnumType(AliasExpiryAction),
+        default=AliasExpiryAction.Disable,
+        server_default="0",
+        nullable=True,
+    )
+    expiry_notify_user = sa.Column(
+        sa.Boolean, default=False, server_default="0", nullable=True
+    )
+
     __table_args__ = (
         Index("ix_video___ts_vector__", ts_vector, postgresql_using="gin"),
         # index on note column using pg_trgm
@@ -1713,6 +1729,7 @@ class Alias(Base, ModelMixin):
         ),
         Index("ix_alias_original_owner_id", "original_owner_id"),
         Index("ix_alias_delete_on", "delete_on"),
+        Index("ix_alias_expiry_date", "expiry_date"),
     )
 
     user = orm.relationship(User, foreign_keys=[user_id])

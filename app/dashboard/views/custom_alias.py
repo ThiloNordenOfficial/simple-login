@@ -17,8 +17,11 @@ from app.dashboard.base import dashboard_bp
 from app.db import Session
 from app.extensions import limiter
 from app.log import LOG
+import arrow
+
 from app.models import (
     Alias,
+    AliasExpiryAction,
     DeletedAlias,
     Mailbox,
     AliasMailbox,
@@ -60,6 +63,10 @@ def custom_alias():
         signed_alias_suffix = request.form.get("signed-alias-suffix")
         mailbox_ids = request.form.getlist("mailboxes")
         alias_note = request.form.get("note")
+        expiry_date_raw = request.form.get("expiry_date")
+        expiry_date = arrow.get(expiry_date_raw) if expiry_date_raw else None
+        expiry_action = AliasExpiryAction(int(request.form.get("expiry_action", 0)))
+        expiry_notify_user = bool(request.form.get("expiry_notify_user"))
 
         if not check_alias_prefix(alias_prefix):
             flash(
@@ -147,6 +154,9 @@ def custom_alias():
                         email=full_alias,
                         note=alias_note,
                         mailbox_id=mailboxes[0].id,
+                        expiry_date=expiry_date,
+                        expiry_action=expiry_action,
+                        expiry_notify_user=expiry_notify_user,
                     )
                     Session.flush()
                 except IntegrityError:
@@ -179,4 +189,5 @@ def custom_alias():
         at_least_a_premium_domain=at_least_a_premium_domain,
         mailboxes=mailboxes,
         csrf_form=csrf_form,
+        today=arrow.now().format("YYYY-MM-DD"),
     )

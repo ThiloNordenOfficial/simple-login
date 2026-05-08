@@ -88,6 +88,47 @@
                       placeholder="Note, can be anything to help you remember why you created this alias. This field is optional."></textarea>
           </div>
         </div>
+        <div class="row mb-2">
+          <div class="col p-1">
+            <div class="small-text mb-1"
+                 data-toogle="tooltip"
+                 title="Automatically disable or delete this alias on a chosen date">
+              Expire this alias
+              <i class="fe fe-help-circle"></i>
+            </div>
+            <label class="custom-switch cursor pl-0">
+              <input type="checkbox"
+                     id="new-expiry-toggle"
+                     class="custom-switch-input"
+                     onchange="toggleNewAliasExpiry()">
+              <span class="custom-switch-indicator"></span>
+            </label>
+            <div id="new-expiry-options"
+                 class="pl-3 mt-1"
+                 style="border-left: 3px solid #adb5bd; display:none">
+              <div class="d-flex flex-wrap align-items-end mt-1" style="gap: 12px">
+                <div>
+                  <div class="small-text mb-1">Expiry date</div>
+                  <input type="date" name="expiry_date" id="new-expiry-date" class="form-control" min="{{ today }}">
+                </div>
+                <div>
+                  <div class="small-text mb-1">Action</div>
+                  <select name="expiry_action" class="form-control">
+                    <option value="0">Disable</option>
+                    <option value="1">Move to trash</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="small-text mb-1">Notify me</div>
+                  <label class="custom-switch cursor pl-0">
+                    <input type="checkbox" name="expiry_notify_user" class="custom-switch-input">
+                    <span class="custom-switch-indicator"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="row">
           <div class="col p-1">
             {{ csrf_form.csrf_token }}
@@ -100,6 +141,13 @@
 {% endblock %}
 {% block script %}
   <script>
+    function toggleNewAliasExpiry() {
+      const enabled = document.getElementById('new-expiry-toggle').checked;
+      const options = document.getElementById('new-expiry-options');
+      options.style.display = enabled ? 'block' : 'none';
+      if (!enabled) document.getElementById('new-expiry-date').value = '';
+    }
+
     $('.mailbox-select').multipleSelect();
 
     // Ctrl-enter submit the form

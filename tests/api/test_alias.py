@@ -9,6 +9,7 @@ from app.email_utils import is_reverse_alias
 from app.models import (
     User,
     Alias,
+    AliasExpiryAction,
     Contact,
     EmailLog,
     Mailbox,
@@ -767,3 +768,148 @@ def test_cannot_create_alias_with_admin_disabled_mailbox_via_api(flask_client):
     else:
         # Alias creation was blocked
         assert r.status_code >= 400
+
+
+def test_get_alias_returns_expiry_fields(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    alias.expiry_date = arrow.now().shift(days=5)
+    alias.expiry_action = AliasExpiryAction.Disable
+    alias.expiry_notify_user = True
+    Session.commit()
+
+    r = flask_client.get(
+        url_for("api.get_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+    )
+    assert r.status_code == 200
+    assert r.json["expiry_date"] is not None
+    assert r.json["expiry_action"] == 0
+    assert r.json["expiry_notify_user"] is True
+
+
+def test_get_alias_returns_delete_to_trash_action(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    alias.expiry_date = arrow.now().shift(days=5)
+    alias.expiry_action = AliasExpiryAction.DeleteToTrash
+    Session.commit()
+
+    r = flask_client.get(
+        url_for("api.get_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+    )
+    assert r.status_code == 200
+    assert r.json["expiry_action"] == 1
+
+
+def test_get_alias_expiry_fields_none_by_default(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    Session.commit()
+
+    r = flask_client.get(
+        url_for("api.get_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+    )
+    assert r.status_code == 200
+    assert r.json["expiry_date"] is None
+
+
+def test_update_alias_set_expiry_date(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_date": arrow.now().shift(days=3).isoformat(), "expiry_action": 0},
+    )
+    assert r.status_code == 200
+    assert alias.expiry_date is not None
+    assert alias.expiry_action == AliasExpiryAction.Disable
+
+
+def test_update_alias_set_expiry_action_delete_to_trash(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_date": arrow.now().shift(days=3).isoformat(), "expiry_action": 1},
+    )
+    assert r.status_code == 200
+    assert alias.expiry_date is not None
+    assert alias.expiry_action == AliasExpiryAction.DeleteToTrash
+
+
+def test_update_alias_clear_expiry_date(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    alias.expiry_date = arrow.now().shift(days=5)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_date": None},
+    )
+    assert r.status_code == 200
+    assert alias.expiry_date is None
+
+
+def test_update_alias_expiry_invalid_date_returns_400(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_date": "not-a-date"},
+    )
+    assert r.status_code == 400
+
+
+def test_update_alias_expiry_invalid_action_returns_400(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_action": 99},
+    )
+    assert r.status_code == 400
+
+
+def test_update_alias_expiry_notify_user(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    alias = Alias.create_new_random(user)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_notify_user": True},
+    )
+    assert r.status_code == 200
+    assert alias.expiry_notify_user is True
+
+
+def test_update_alias_expiry_forbidden_for_other_user(flask_client):
+    user, api_key = get_new_user_and_api_key()
+    other_user, _ = get_new_user_and_api_key()
+    alias = Alias.create_new_random(other_user)
+    Session.commit()
+
+    r = flask_client.put(
+        url_for("api.update_alias", alias_id=alias.id),
+        headers={"Authentication": api_key.code},
+        json={"expiry_date": arrow.now().shift(days=1).isoformat()},
+    )
+    assert r.status_code == 403

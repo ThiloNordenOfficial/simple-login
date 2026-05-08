@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  {% call text() %}
+    <h1>Your alias has expired.</h1>
+  {% endcall %}
+
+  {% call text() %}
+    Your alias <b>{{ alias.email }}</b> has expired and has been <b>{{ action }}</b>.
+  {% endcall %}
+
+  {% call text() %}
+    You can manage your aliases from your
+    <a href="{{ URL }}/dashboard">SimpleLogin dashboard</a>.
+  {% endcall %}
+
+  {% call text() %}
+    Best,
+    <br />
+    SimpleLogin Team.
+  {% endcall %}
+
+{% endblock %}

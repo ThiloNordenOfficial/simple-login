@@ -1,5 +1,6 @@
 from random import random
 
+import arrow
 from flask import url_for
 
 from app import config
@@ -13,13 +14,14 @@ from app.alias_suffix import (
 from app.config import EMAIL_DOMAIN
 from app.db import Session
 from app.models import (
-    Mailbox,
-    CustomDomain,
     Alias,
-    DomainDeletedAlias,
-    DeletedAlias,
-    SLDomain,
+    AliasExpiryAction,
+    CustomDomain,
     DailyMetric,
+    DeletedAlias,
+    DomainDeletedAlias,
+    Mailbox,
+    SLDomain,
 )
 from app.utils import random_word
 from tests.utils import (
@@ -457,3 +459,73 @@ def test_admin_disabled_mailbox_not_in_form_list(flask_client):
     # Check that admin-disabled mailbox is NOT in the page
     # (it should be filtered from the mailbox list)
     assert b"disabled@gmail.com" not in r.data or b"Disabled by admin" in r.data
+
+
+def test_create_alias_with_expiry_date(flask_client):
+    user = login(flask_client)
+    alias_suffixes = get_alias_suffixes(user)
+    alias_suffix = alias_suffixes[0]
+    expiry_str = arrow.now().shift(days=7).format("YYYY-MM-DD")
+
+    r = flask_client.post(
+        url_for("dashboard.custom_alias"),
+        data={
+            "prefix": "expiry-test",
+            "signed-alias-suffix": alias_suffix.signed_suffix,
+            "mailboxes": [user.default_mailbox_id],
+            "expiry_date": expiry_str,
+            "expiry_action": "0",
+            "expiry_notify_user": "on",
+        },
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    alias = Alias.get_by(email=f"expiry-test{alias_suffix.suffix}")
+    assert alias is not None
+    assert alias.expiry_date is not None
+    assert alias.expiry_action == AliasExpiryAction.Disable
+    assert alias.expiry_notify_user is True
+
+
+def test_create_alias_with_expiry_action_delete_to_trash(flask_client):
+    user = login(flask_client)
+    alias_suffixes = get_alias_suffixes(user)
+    alias_suffix = alias_suffixes[0]
+    expiry_str = arrow.now().shift(days=7).format("YYYY-MM-DD")
+
+    r = flask_client.post(
+        url_for("dashboard.custom_alias"),
+        data={
+            "prefix": "expiry-trash",
+            "signed-alias-suffix": alias_suffix.signed_suffix,
+            "mailboxes": [user.default_mailbox_id],
+            "expiry_date": expiry_str,
+            "expiry_action": "1",
+        },
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    alias = Alias.get_by(email=f"expiry-trash{alias_suffix.suffix}")
+    assert alias is not None
+    assert alias.expiry_date is not None
+    assert alias.expiry_action == AliasExpiryAction.DeleteToTrash
+
+
+def test_create_alias_without_expiry_has_no_expiry_date(flask_client):
+    user = login(flask_client)
+    alias_suffixes = get_alias_suffixes(user)
+    alias_suffix = alias_suffixes[0]
+
+    r = flask_client.post(
+        url_for("dashboard.custom_alias"),
+        data={
+            "prefix": "no-expiry",
+            "signed-alias-suffix": alias_suffix.signed_suffix,
+            "mailboxes": [user.default_mailbox_id],
+        },
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    alias = Alias.get_by(email=f"no-expiry{alias_suffix.suffix}")
+    assert alias is not None
+    assert alias.expiry_date is None

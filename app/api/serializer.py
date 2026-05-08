@@ -76,6 +76,13 @@ def serialize_alias_info_v2(alias_info: AliasInfo) -> dict:
         "disable_pgp": alias_info.alias.disable_pgp,
         "latest_activity": None,
         "pinned": alias_info.alias.pinned,
+        "expiry_date": alias_info.alias.expiry_date.isoformat()
+        if alias_info.alias.expiry_date
+        else None,
+        "expiry_action": alias_info.alias.expiry_action.value
+        if alias_info.alias.expiry_action is not None
+        else None,
+        "expiry_notify_user": alias_info.alias.expiry_notify_user,
     }
     if alias_info.latest_email_log:
         email_log = alias_info.latest_email_log

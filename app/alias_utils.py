@@ -39,6 +39,7 @@ from app.events.generated.event_pb2 import (
 from app.log import LOG
 from app.models import (
     Alias,
+    AliasExpiryAction,
     CustomDomain,
     Directory,
     User,
@@ -550,6 +551,21 @@ def change_alias_note(alias: Alias, note: str, commit: bool = False):
 
     EventDispatcher.send_event(alias.user, EventContent(alias_note_changed=event))
 
+    if commit:
+        Session.commit()
+
+
+def change_alias_expiry(
+    alias: Alias,
+    expiry_date,
+    expiry_action: AliasExpiryAction,
+    expiry_notify_user: bool,
+    commit: bool = False,
+):
+    LOG.i(f"Changing alias {alias} expiry to {expiry_date} action={expiry_action}.")
+    alias.expiry_date = expiry_date
+    alias.expiry_action = expiry_action
+    alias.expiry_notify_user = expiry_notify_user
     if commit:
         Session.commit()
 
