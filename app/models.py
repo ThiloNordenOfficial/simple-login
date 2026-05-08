@@ -873,20 +873,10 @@ class User(Base, ModelMixin, UserMixin, PasswordOracle):
         return self.delete_on < arrow.now()
 
     def in_trial(self):
-        """return True if user does not have lifetime licence or an active subscription AND is in trial period"""
-        if self.lifetime_or_active_subscription():
-            return False
-
-        if self.trial_end and arrow.now() < self.trial_end:
-            return True
-
         return False
 
     def should_show_upgrade_button(self):
-        if self.lifetime_or_active_subscription():
-            return False
-
-        return True
+        return False
 
     def is_premium(self, include_partner_subscription: bool = True) -> bool:
         return True
