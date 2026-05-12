@@ -59,7 +59,7 @@ from app.dashboard.base import dashboard_bp
 from app.db import Session
 from app.developer.base import developer_bp
 from app.discover.base import discover_bp
-from app.extensions import login_manager, limiter
+from app.extensions import login_manager, limiter, csrf
 from app.fake_data import fake_data
 from app.internal.base import internal_bp
 from app.jose_utils import get_jwk_key
@@ -416,6 +416,7 @@ def jinja2_filter(app):
 
 def init_extensions(app: Flask):
     login_manager.init_app(app)
+    csrf.init_app(app)
 
 
 def register_custom_commands(app):
