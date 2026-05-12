@@ -1,14 +1,10 @@
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import current_user, LoginManager
-from flask_wtf.csrf import CSRFProtect
-
 from app import config
 
 login_manager = LoginManager()
 login_manager.session_protection = "strong"
-
-csrf = CSRFProtect()
 
 
 # We want to rate limit based on:
