@@ -960,15 +960,7 @@ class User(Base, ModelMixin, UserMixin, PasswordOracle):
         if self.disabled:
             return False
 
-        if self.lifetime_or_active_subscription():
-            return True
-        else:
-            active_alias_count = Alias.filter_by(
-                user_id=self.id, delete_on=None
-            ).count()
-            return (
-                active_alias_count + num_aliases
-            ) <= self.max_alias_for_free_account()
+        return True
 
     def can_send_or_receive(self) -> bool:
         if self.disabled:
