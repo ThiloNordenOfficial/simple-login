@@ -850,11 +850,7 @@ class User(Base, ModelMixin, UserMixin, PasswordOracle):
     def lifetime_or_active_subscription(
         self, include_partner_subscription: bool = True
     ) -> bool:
-        """True if user has lifetime licence or active subscription"""
-        if self.lifetime:
-            return True
-
-        return self.get_active_subscription(include_partner_subscription) is not None
+        return True
 
     def is_paid(self) -> bool:
         """same as _lifetime_or_active_subscription but not include free manual subscription"""
@@ -960,7 +956,15 @@ class User(Base, ModelMixin, UserMixin, PasswordOracle):
         if self.disabled:
             return False
 
-        return True
+        if self.lifetime_or_active_subscription():
+            return True
+        else:
+            active_alias_count = Alias.filter_by(
+                user_id=self.id, delete_on=None
+            ).count()
+            return (
+                active_alias_count + num_aliases
+            ) <= self.max_alias_for_free_account()
 
     def can_send_or_receive(self) -> bool:
         if self.disabled:
